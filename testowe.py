@@ -17,3 +17,4 @@ plt.title('Wykres X od Y')
 
 # Wyświetlanie wykresu
 plt.show()
+print("kocham Natalię")
