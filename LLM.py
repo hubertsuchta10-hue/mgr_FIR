@@ -1,133 +1,179 @@
 import os
 import sys
 from pathlib import Path
+import argparse
+from typing import Literal
 
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 from pydantic import BaseModel, Field
 
-
+#sposób odpalenia kodu: python ./LLM.py "/Users/hubert/Desktop/mgr_FIR/Pekao_KID/Pekao Konserwatywny Plus_karta.pdf"
 # ---------- JEDEN, PŁASKI SCHEMAT ---------- 
 # double check - czy jest tak jak w KID
 # predefiniowana lista pól do wyciągnięcia z KID
 
 class FundKIDFlat(BaseModel):
+
+    # Identyfikacja
+
     fund_name: str = Field(description="Pełna nazwa funduszu.")
+
     isin: str = Field(description="Kod ISIN funduszu.")
-    kid_date: str = Field(
-        description="Data dokumentu KID w formacie RRRR-MM-DD."
+
+    management_company: str = Field(
+
+        description="Podmiot zarządzający (TFI / towarzystwo funduszy inwestycyjnych)."
+
+    )
+ 
+    # 1. Typ funduszu
+
+    fund_type: Literal["Akcyjny", "Mieszany", "Dłużny"] = Field(
+
+        description="Typ funduszu: Akcyjny, Mieszany lub Dłużny (obligacyjny)."
+
+    )
+ 
+    # 2. Geografia + udział procentowy
+
+    geography_allocation: str = Field(
+
+        description=(
+
+            "Struktura geograficzna aktywów w formacie 'region: procent', "
+
+            "rozdzielona średnikami, np. 'Polska: 40; USA: 30; Europa: 30'."
+
+        )
+
+    )
+ 
+    # 3. Sektor / klasa aktywów + udział
+
+    sector_allocation: str = Field(
+
+        description=(
+
+            "Struktura sektorowa (dla funduszy akcyjnych/mieszanych) lub klas aktywów, "
+
+            "w formacie 'sektor/klasa: procent', rozdzielona średnikami, np. "
+
+            "'AI: 25; Zbrojeniowy: 15; Konsumpcyjny: 20; Instrumenty pieniężne: 40'."
+
+        )
+
     )
 
-    # Market / coverage
-    fund_type: str = Field(
-        description="Typ funduszu, np. 'short-term debt fund'."
-    )
-    target_assets: str = Field(
-        description="Klasy aktywów, rozdzielone średnikami, np. 'obligacje; depozyty bankowe; ...'."
-    )
-    geographic_markets: str = Field(
-        description="Rynki geograficzne, rozdzielone średnikami."
-    )
-    benchmark: str = Field(
-        description="Benchmark funduszu, np. '100% POLONIA + 40bp'."
-    )
+    fixed_income_share_percent: float = Field(
 
-    # Performance / ryzyko
-    investment_horizon: str = Field(
-        description="Rekomendowany horyzont inwestycyjny, np. '1 year'."
-    )
-    risk_indicator: int = Field(
-        description="Syntetyczny wskaźnik ryzyka z KID (1–7)."
-    )
+        description=(
 
-    scenario_extreme_final_value: int = Field(
-        description="Końcowa wartość inwestycji w scenariuszu skrajnym (PLN)."
-    )
-    scenario_extreme_return_percent: float = Field(
-        description="Stopa zwrotu w scenariuszu skrajnym (%)."
-    )
+            "Udział części dłużnej (obligacyjnej) w portfelu w %, istotny szczególnie dla funduszy mieszanych."
 
-    scenario_unfavourable_final_value: int = Field(
-        description="Końcowa wartość w scenariuszu niekorzystnym (PLN)."
-    )
-    scenario_unfavourable_return_percent: float = Field(
-        description="Stopa zwrotu w scenariuszu niekorzystnym (%)."
-    )
+        )
 
-    scenario_moderate_final_value: int = Field(
-        description="Końcowa wartość w scenariuszu umiarkowanym (PLN)."
     )
-    scenario_moderate_return_percent: float = Field(
-        description="Stopa zwrotu w scenariuszu umiarkowanym (%)."
-    )
+ 
+    # 4. Ratingi kredytowe
 
-    scenario_favourable_final_value: int = Field(
-        description="Końcowa wartość w scenariuszu korzystnym (PLN)."
-    )
-    scenario_favourable_return_percent: float = Field(
-        description="Stopa zwrotu w scenariuszu korzystnym (%)."
-    )
+    credit_rating_breakdown: str = Field(
 
-    # Koszty
+        description=(
+
+            "Rozkład wewnętrznego ratingu kredytowego lub zewnętrznych ratingów "
+
+            "w formacie 'rating: procent', np. 'AAA: 20; AA: 30; A: 25; BBB i niżej: 25'."
+
+        )
+
+    )
+ 
+    # 5. Struktura walutowa
+
+    currency_allocation: str = Field(
+
+        description=(
+
+            "Struktura walutowa aktywów w formacie 'waluta: procent', rozdzielona średnikami, "
+
+            "np. 'PLN: 60; USD: 25; EUR: 15'."
+
+        )
+
+    )
+ 
+    # 6. Opłaty
+
     entry_fee_percent: float = Field(
-        description="Maksymalna opłata wejściowa w %."
+
+        description="Maksymalna opłata wejściowa w % (jeśli brak – 0.0)."
+
     )
 
-    annual_transaction_costs_percent: float = Field(
-        description="Roczne koszty transakcyjne w %."
-    )
-    annual_management_and_admin_percent: float = Field(
-        description="Roczne koszty zarządzania i administracji w %."
-    )
-    annual_performance_fee_percent: float = Field(
-        description="Roczna opłata za wyniki w %."
-    )
-    performance_fee_rate: float = Field(
-        description="Stawka performance fee w %, np. 20.0."
+    management_fee_percent: float = Field(
+
+        description="Roczna opłata za zarządzanie w % (TER/management fee)."
+
     )
 
-    annual_transaction_costs_pln: int = Field(
-        description="Koszty transakcyjne po 1 roku w PLN."
-    )
-    annual_management_costs_pln: int = Field(
-        description="Koszty zarządzania po 1 roku w PLN."
-    )
-    annual_performance_costs_pln: int = Field(
-        description="Performance fee po 1 roku w PLN."
+    performance_fee_percent: float = Field(
+
+        description="Roczna opłata za wyniki (performance fee) w % (jeśli brak – 0.0)."
+
     )
 
-    total_costs_after_1_year_pln: int = Field(
-        description="Łączne koszty po 1 roku w PLN."
-    )
-    total_costs_after_1_year_percent: float = Field(
-        description="Łączne koszty po 1 roku w %."
+    other_fees_percent: float = Field(
+
+        description="Pozostałe koszty bieżące w % (np. koszty administracyjne, depozytariusza)."
+
     )
 
-    # Ryzyko opisowe
-    risk_class: int = Field(
-        description="Klasa ryzyka (1–7) zgodna z KID."
-    )
-    other_risks: str = Field(
-        description="Inne istotne ryzyka, rozdzielone średnikami."
-    )
+    total_expense_ratio_percent: float = Field(
 
-    # Wnioski strategiczne (też spłaszczone)
-    covered_segments: str = Field(
-        description="Segmenty rynku pokrywane przez fundusz, rozdzielone średnikami."
+        description="Całkowity wskaźnik kosztów (TER) w % w skali roku."
+
     )
-    not_covered_segments: str = Field(
-        description="Segmenty rynku niepokrywane, rozdzielone średnikami."
+ 
+    # 7. Stopa zwrotu (5 lat)
+
+    return_5y_percent: float = Field(
+
+        description="Skumulowana stopa zwrotu za ostatnie 5 lat w % (jeśli dostępna)."
+
     )
-    efficiency_indicators_needed: str = Field(
-        description="Dodatkowe wskaźniki efektywności potrzebne do analizy, rozdzielone średnikami."
+ 
+    # 8. Wewnętrzne wskaźniki ryzyka
+
+    internal_risk_indicators: str = Field(
+
+        description=(
+
+            "Opisowe lub ilościowe wewnętrzne wskaźniki ryzyka, rozdzielone średnikami, np. "
+
+            "'maksymalne obsunięcie kapitału; VaR; tracking error'."
+
+        )
+
     )
-    peer_group: str = Field(
-        description="Grupa porównawcza, np. 'fundusze dłużne krótkoterminowe'."
+ 
+    # 9. Wskaźnik Sharpe’a
+
+    sharpe_ratio_5y: float = Field(
+
+        description="Wskaźnik Sharpe’a liczony dla horyzontu 5-letniego."
+
     )
-    comparison_metrics: str = Field(
-        description="Metryki porównania z konkurencją, rozdzielone średnikami."
+ 
+    # 10. Odchylenie standardowe
+
+    volatility_5y_percent: float = Field(
+
+        description="Roczne odchylenie standardowe stóp zwrotu (volatility) w % dla okresu 5 lat."
+
     )
+ 
 
 
 # ---------- WYWOŁANIE GEMINI NA PDF ----------
@@ -184,15 +230,35 @@ dla jednego funduszu:
 
 
 def main() -> None:
-    if len(sys.argv) < 2 or not sys.argv[-1].lower().endswith(".pdf"):
-        print(f"Użycie: python {Path(__file__).name} path/do/pliku.pdf")
-        raise SystemExit(1)
+    parser = argparse.ArgumentParser(
+        description="Przetwarzanie plików KID PDF z danego folderu."
+    )
+    parser.add_argument(
+        "folder_path", type=str, help="Ścieżka do folderu z plikami PDF."
+    )
+    parser.add_argument(
+        "--max_files",
+        type=int,
+        default=1,
+        help="Maksymalna liczba plików do przetworzenia.",
+    )
+    args = parser.parse_args()
 
-    pdf_path = sys.argv[-1]
-    fund = extract_fund_kid_from_pdf(pdf_path)
+    input_dir = Path(args.folder_path)
+    if not input_dir.is_dir():
+        print(f"Błąd: Podana ścieżka '{input_dir}' nie jest folderem.")
+        sys.exit(1)
 
-    # Ładny JSON na stdout
-    print(fund.model_dump_json(indent=2, ensure_ascii=False))
+    pdf_files = sorted([f for f in input_dir.glob("*.pdf")])[: args.max_files]
+
+    for pdf_path in pdf_files:
+        print(f"\n--- Przetwarzanie pliku: {pdf_path.name} ---")
+        fund_data = extract_fund_kid_from_pdf(str(pdf_path))
+        output_filename = f"Podsumowanie_{pdf_path.stem}.json"
+        output_path = input_dir / output_filename
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write(fund_data.model_dump_json(indent=2, ensure_ascii=False))
+        print(f"✅ Zapisano podsumowanie do: {output_path}")
 
 
 if __name__ == "__main__":
