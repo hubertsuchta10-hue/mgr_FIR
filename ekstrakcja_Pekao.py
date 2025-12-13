@@ -9,7 +9,7 @@ def run(playwright: Playwright, fund) -> None:
     page = context.new_page()
     
     # Define download directory
-    download_dir = "/Users/hubert/Desktop/mgr_FIR/Pekao_KID"
+    download_dir = "/Users/hubert/Desktop/mgr_FIR/Pekao"
 
     try:
         # Navigate directly to the fund page, which is more reliable
@@ -25,27 +25,34 @@ def run(playwright: Playwright, fund) -> None:
         except TimeoutError:
             print("Cookie banner not found or already accepted.")
 
-        # --- Download KID document ---
-        print("\nAttempting to download KID document...")
-        kid_path = os.path.join(download_dir, fund["text"] + "_KID.pdf")
-        if os.path.exists(kid_path):
-            print(f"✅ KID document already exists, skipping download: {kid_path}")
+        # --- Download card document ---
+        print("\nAttempting to download card document...")
+        card_path = os.path.join(download_dir, fund["text"] + "_karta.pdf")
+        if os.path.exists(card_path):
+            print(f"✅ card document already exists, skipping download: {card_path}")
         else:
+         # This selector is more robust. It finds the first link with "Karta subfunduszu" in its text.
+            print("Searching for Karta subfunduszu link and clicking...")
+            page.get_by_role("link", name=re.compile("Karta subfunduszu", re.IGNORECASE)).first.click()   
             try:
                 with page.expect_download(timeout=20000) as download_info:
-                    # This selector is more robust. It finds the first link with "KID" in its text.
-                    print("Searching for KID link and clicking...")
-                    page.get_by_role("link", name=re.compile("KID", re.IGNORECASE)).first.click()
-                
+                    
+                    try:
+                        print("Looking for popup")
+                        page.locator("a").filter(has_text="Akceptuję").first.click(timeout=5000)
+                        print("Close popup.")
+                    except TimeoutError:
+                        print("Popup not found.")
+        
                 download = download_info.value
                 # Save the file to the specified directory
-                download.save_as(kid_path)
-                print(f"✅ Successfully downloaded KID document to: {kid_path}")
+                download.save_as(card_path)
+                print(f"✅ Successfully downloaded Karta subfunduszu document to: {card_path}")
 
             except TimeoutError:
-                print("❌ ERROR: Timed out waiting for the KID document download.")
-                print("   The script could not find a clickable link containing 'KID' that started a download.")
-                screenshot_path = os.path.join(download_dir, "debug_screenshot_kid_error.png")
+                print("❌ ERROR: Timed out waiting for the Karta subfunduszu document download.")
+                print("   The script could not find a clickable link containing 'Karta subfunduszu' that started a download.")
+                screenshot_path = os.path.join(download_dir, "debug_screenshot_card_error.png")
                 page.screenshot(path=screenshot_path)
                 print(f"   A screenshot has been saved to {screenshot_path} for debugging.")
 

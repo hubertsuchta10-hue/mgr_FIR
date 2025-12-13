@@ -9,8 +9,9 @@ from google import genai
 from google.genai import types
 from pydantic import BaseModel, Field
 
-#sposób odpalenia kodu: python ./LLM.py "/Users/hubert/Desktop/mgr_FIR/Pekao_KID/Pekao Konserwatywny Plus_karta.pdf"
-# ---------- JEDEN, PŁASKI SCHEMAT ---------- 
+#sposób odpalenia kodu: python /Users/hubert/Desktop/mgr_FIR/LLM.py "/Users/hubert/Desktop/mgr_FIR/Pekao" --max_files 3
+#sposób odpalenia kodu: python /Users/hubert/Desktop/mgr_FIR/LLM.py "/Users/hubert/Desktop/mgr_FIR/PKO"
+# ---------- JEDEN, PŁASKI SCHEMAT ---------- #zmieniam
 # double check - czy jest tak jak w KID
 # predefiniowana lista pól do wyciągnięcia z KID
 
@@ -194,7 +195,7 @@ def extract_fund_kid_from_pdf(pdf_path: str, model_name: str = "gemini-2.5-flash
         raise FileNotFoundError(f"Nie znaleziono pliku: {pdf_file}")
 
     pdf_bytes = pdf_file.read_bytes()
-
+#zmieniam
     prompt = """
 Jesteś analitykiem funduszy inwestycyjnych.
 
@@ -239,7 +240,7 @@ def main() -> None:
     parser.add_argument(
         "--max_files",
         type=int,
-        default=1,
+        default=None,
         help="Maksymalna liczba plików do przetworzenia.",
     )
     args = parser.parse_args()
