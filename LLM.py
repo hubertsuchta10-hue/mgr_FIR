@@ -8,180 +8,211 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 from pydantic import BaseModel, Field
+from typing import List, Optional, Literal
 
 #sposób odpalenia kodu: python /Users/hubert/Desktop/mgr_FIR/LLM.py "/Users/hubert/Desktop/mgr_FIR/Pekao" --max_files 3
 #sposób odpalenia kodu: python /Users/hubert/Desktop/mgr_FIR/LLM.py "/Users/hubert/Desktop/mgr_FIR/PKO"
 # ---------- JEDEN, PŁASKI SCHEMAT ---------- #zmieniam
-# double check - czy jest tak jak w KID
-# predefiniowana lista pól do wyciągnięcia z KID
+# double check - czy jest tak jak w karcie funduszu
+# predefiniowana lista pól do wyciągnięcia z karty funduszu
 
-class FundKIDFlat(BaseModel):
+class FundcardFlat(BaseModel):
 
-    # Identyfikacja
+# =========================================================
+# 1. IDENTYFIKACJA FUNDUSZU
+# =========================================================
 
-    fund_name: str = Field(description="Pełna nazwa funduszu.")
-
-    isin: str = Field(description="Kod ISIN funduszu.")
-
-    management_company: str = Field(
-
-        description="Podmiot zarządzający (TFI / towarzystwo funduszy inwestycyjnych)."
-
+    nazwa_funduszu: str = Field(
+        description="Pełna nazwa subfunduszu z nagłówka karty funduszu."
     )
- 
-    # 1. Typ funduszu
 
-    fund_type: Literal["Akcyjny", "Mieszany", "Dłużny"] = Field(
-
-        description="Typ funduszu: Akcyjny, Mieszany lub Dłużny (obligacyjny)."
-
+    towarzystwo: str = Field(
+        description="Podmiot zarządzający (PKO TFI / Santander TFI / Pekao TFI)."
     )
- 
-    # 2. Geografia + udział procentowy
 
-    geography_allocation: str = Field(
-
+    kategoria_funduszu: Optional[str] = Field(
         description=(
-
-            "Struktura geograficzna aktywów w formacie 'region: procent', "
-
-            "rozdzielona średnikami, np. 'Polska: 40; USA: 30; Europa: 30'."
-
+            "Deklaratywna kategoria funduszu nadana przez TFI, np. "
+            "'akcyjny rynków zagranicznych', "
+            "'obligacji wysokodochodowych', "
+            "'fundusz cyklu życia', "
+            "'PPK'."
         )
-
     )
- 
-    # 3. Sektor / klasa aktywów + udział
 
-    sector_allocation: str = Field(
-
+    typ_funduszu: Literal["akcyjny", "dłużny", "mieszany"] = Field(
         description=(
-
-            "Struktura sektorowa (dla funduszy akcyjnych/mieszanych) lub klas aktywów, "
-
-            "w formacie 'sektor/klasa: procent', rozdzielona średnikami, np. "
-
-            "'AI: 25; Zbrojeniowy: 15; Konsumpcyjny: 20; Instrumenty pieniężne: 40'."
-
+            "Typ funduszu wynikający z dominującej klasy aktywów "
+            "(akcyjny / dłużny / mieszany). "
+            "PPK i cykl życia NIE są typem funduszu."
         )
-
     )
 
-    fixed_income_share_percent: float = Field(
+    forma_prawna: Optional[Literal["FIO", "SFIO"]] = Field(
+        description="Forma prawna funduszu (FIO lub SFIO), jeśli wskazana w karcie funduszu."
+    )
 
+    parasolowy: Literal["tak", "nie"] = Field(
         description=(
-
-            "Udział części dłużnej (obligacyjnej) w portfelu w %, istotny szczególnie dla funduszy mieszanych."
-
+            "Czy fundusz jest subfunduszem w ramach funduszu parasolowego, "
+            "zgodnie z informacją z karty funduszu."
         )
-
     )
- 
-    # 4. Ratingi kredytowe
 
-    credit_rating_breakdown: str = Field(
-
+    czy_PPK: Literal["tak", "nie"] = Field(
         description=(
-
-            "Rozkład wewnętrznego ratingu kredytowego lub zewnętrznych ratingów "
-
-            "w formacie 'rating: procent', np. 'AAA: 20; AA: 30; A: 25; BBB i niżej: 25'."
-
+            "Czy fundusz jest częścią programu Pracowniczych Planów Kapitałowych (PPK)."
         )
-
     )
- 
-    # 5. Struktura walutowa
 
-    currency_allocation: str = Field(
+    data_publikacji: Optional[str] = Field(
+        description="Data publikacji karty funduszu (YYYY-MM-DD)."
+    )
 
+    # =========================================================
+    # 2. OGÓLNY WSKAŹNIK RYZYKA
+    # =========================================================
+
+    ogolny_wskaznik_ryzyka: Optional[
+        Literal[1, 2, 3, 4, 5, 6, 7]
+    ] = Field(
         description=(
-
-            "Struktura walutowa aktywów w formacie 'waluta: procent', rozdzielona średnikami, "
-
-            "np. 'PLN: 60; USD: 25; EUR: 15'."
-
+            "Ogólny wskaźnik ryzyka w skali 1–7, "
+            "przepisany bezpośrednio z karty funduszu. "
+            "Jeżeli brak – null."
         )
-
-    )
- 
-    # 6. Opłaty
-
-    entry_fee_percent: float = Field(
-
-        description="Maksymalna opłata wejściowa w % (jeśli brak – 0.0)."
-
     )
 
-    management_fee_percent: float = Field(
+    # =========================================================
+    # 3. DANE OGÓLNE
+    # =========================================================
 
-        description="Roczna opłata za zarządzanie w % (TER/management fee)."
-
+    aktywa_netto_mln: Optional[float] = Field(
+        description="Aktywa netto funduszu w mln zł."
     )
 
-    performance_fee_percent: float = Field(
-
-        description="Roczna opłata za wyniki (performance fee) w % (jeśli brak – 0.0)."
-
+    cena_jednostki: Optional[float] = Field(
+        description="Cena jednostki uczestnictwa."
     )
 
-    other_fees_percent: float = Field(
-
-        description="Pozostałe koszty bieżące w % (np. koszty administracyjne, depozytariusza)."
-
+    minimalna_wplata_pierwsza: Optional[float] = Field(
+        description="Minimalna pierwsza wpłata."
     )
 
-    total_expense_ratio_percent: float = Field(
-
-        description="Całkowity wskaźnik kosztów (TER) w % w skali roku."
-
+    data_pierwszej_wyceny: Optional[str] = Field(
+        description="Data pierwszej wyceny funduszu (YYYY-MM-DD)."
     )
- 
-    # 7. Stopa zwrotu (5 lat)
 
-    return_5y_percent: float = Field(
-
-        description="Skumulowana stopa zwrotu za ostatnie 5 lat w % (jeśli dostępna)."
-
+    sugerowany_czas_inwestycji_lata: Optional[int] = Field(
+        description="Sugerowany minimalny czas inwestycji w latach."
     )
- 
-    # 8. Wewnętrzne wskaźniki ryzyka
 
-    internal_risk_indicators: str = Field(
+    # =========================================================
+    # 4. OPŁATY
+    # =========================================================
 
+    oplata_za_zarzadzanie: Optional[float] = Field(
+        description="Roczna opłata za zarządzanie w %, jako float np. 3% zapisz jako 0.03."
+    )
+
+    oplata_za_wynik: Optional[str] = Field(
+        description="Opisowa informacja o opłacie za wynik."
+    )
+
+    oplata_manipulacyjna: Optional[float] = Field(
+        description="Opłata manipulacyjna (wejściowa) w %, jako float np. 3% zapisz jako 0.03."
+    )
+
+    # =========================================================
+    # 5. BENCHMARK
+    # =========================================================
+
+    benchmark_nazwa: Optional[str] = Field(
+        description="Nazwa benchmarku funduszu, jeśli występuje."
+    )
+
+    benchmark_sklad: List[str] = Field(
+        default_factory=list,
+        description="Skład benchmarku, np. ['WIG: 90%', 'POLONIA: 10%']."
+    )
+
+    benchmark_waluta: Optional[str] = Field(
+        description="Waluta benchmarku (PLN, EUR, USD)."
+    )
+
+    # =========================================================
+    # 6. POLITYKA INWESTYCYJNA – STRESZCZENIE
+    # =========================================================
+
+    polityka_inwestycyjna_streszczenie: Optional[str] = Field(
         description=(
-
-            "Opisowe lub ilościowe wewnętrzne wskaźniki ryzyka, rozdzielone średnikami, np. "
-
-            "'maksymalne obsunięcie kapitału; VaR; tracking error'."
-
+            "Krótki (2–3 zdania) opis polityki inwestycyjnej, "
+            "stworzony jako streszczenie treści karty funduszu."
         )
-
     )
- 
-    # 9. Wskaźnik Sharpe’a
 
-    sharpe_ratio_5y: float = Field(
+    # =========================================================
+    # 7. RODZAJE INSTRUMENTÓW
+    # =========================================================
 
-        description="Wskaźnik Sharpe’a liczony dla horyzontu 5-letniego."
-
+    rodzaje_instrumentow: List[str] = Field(
+        default_factory=list,
+        description=(
+            "Rodzaje instrumentów finansowych występujących w portfelu, "
+            "np. akcje notowane, obligacje skarbowe, obligacje korporacyjne, "
+            "obligacje wysokodochodowe, ETF, fundusze, "
+            "depozyty bankowe, instrumenty rynku pieniężnego."
+        )
     )
- 
-    # 10. Odchylenie standardowe
 
-    volatility_5y_percent: float = Field(
+    # =========================================================
+    # 8. STRUKTURA PORTFELA
+    # =========================================================
 
-        description="Roczne odchylenie standardowe stóp zwrotu (volatility) w % dla okresu 5 lat."
-
+    alokacja_geograficzna: List[str] = Field(
+        default_factory=list,
+        description="Struktura geograficzna portfela."
     )
- 
+
+    alokacja_walutowa: List[str] = Field(
+        default_factory=list,
+        description="Struktura walutowa portfela."
+    )
+
+    alokacja_sektorowa: List[str] = Field(
+        default_factory=list,
+        description="Struktura sektorowa portfela."
+    )
+
+    top10: List[str] = Field(
+        default_factory=list,
+        description="Lista 10 największych pozycji w portfelu."
+    )
+
+    klasy_instrumentow: List[str] = Field(
+        default_factory=list,
+        description="Struktura klas instrumentów."
+    )
+
+    # =========================================================
+    # 9. KATEGORIE JEDNOSTEK
+    # =========================================================
+
+    kategoria_A: Literal["tak", "nie"] = Field(
+        description="Czy fundusz posiada kategorię jednostek A."
+    )
+
+    inne_kategorie: List[str] = Field(
+        default_factory=list,
+        description="Pozostałe kategorie jednostek (np. S, T, B, D)."
+    )
 
 
 # ---------- WYWOŁANIE GEMINI NA PDF ----------
 
-def extract_fund_kid_from_pdf(pdf_path: str, model_name: str = "gemini-2.5-flash") -> FundKIDFlat:
+def extract_fund_card_from_pdf(pdf_path: str, model_name: str = "gemini-2.5-flash") -> FundcardFlat:
     """
-    Czyta lokalny plik PDF z KID-em, wysyła do Gemini i zwraca obiekt FundKIDFlat.
+    Czyta lokalny plik PDF z kartami funduszy, wysyła do Gemini i zwraca obiekt FundcardFlat.
     """
     load_dotenv()  # Wczytuje zmienne środowiskowe z pliku .env
     api_key = os.getenv("GEMINI_API_KEY")
@@ -199,7 +230,7 @@ def extract_fund_kid_from_pdf(pdf_path: str, model_name: str = "gemini-2.5-flash
     prompt = """
 Jesteś analitykiem funduszy inwestycyjnych.
 
-Na podstawie załączonego dokumentu KID (Kluczowe Informacje dla Inwestorów)
+Na podstawie załączonego dokumentu karta funduszu inwestycyjnego wyobierz i wypisz
 dla jednego funduszu:
 
 1. Odczytaj wszystkie wymagane pola.
@@ -222,17 +253,17 @@ dla jednego funduszu:
         ],
         config={
             "response_mime_type": "application/json",
-            "response_json_schema": FundKIDFlat.model_json_schema(),
+            "response_json_schema": FundcardFlat.model_json_schema(),
         },
     )
 
-    # response.text = JSON zgodny ze schematem FundKIDFlat
-    return FundKIDFlat.model_validate_json(response.text)
+    # response.text = JSON zgodny ze schematem FundcardFlat
+    return FundcardFlat.model_validate_json(response.text)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Przetwarzanie plików KID PDF z danego folderu."
+        description="Przetwarzanie plików karty funduszu z pliku PDF z danego folderu."
     )
     parser.add_argument(
         "folder_path", type=str, help="Ścieżka do folderu z plikami PDF."
@@ -242,6 +273,11 @@ def main() -> None:
         type=int,
         default=None,
         help="Maksymalna liczba plików do przetworzenia.",
+    )
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Nadpisz istniejące pliki JSON.",
     )
     args = parser.parse_args()
 
@@ -253,10 +289,15 @@ def main() -> None:
     pdf_files = sorted([f for f in input_dir.glob("*.pdf")])[: args.max_files]
 
     for pdf_path in pdf_files:
-        print(f"\n--- Przetwarzanie pliku: {pdf_path.name} ---")
-        fund_data = extract_fund_kid_from_pdf(str(pdf_path))
         output_filename = f"Podsumowanie_{pdf_path.stem}.json"
         output_path = input_dir / output_filename
+
+        if output_path.exists() and not args.overwrite:
+            print(f"⏩ Pomijam (plik istnieje): {output_filename}")
+            continue
+
+        print(f"\n--- Przetwarzanie pliku: {pdf_path.name} ---")
+        fund_data = extract_fund_card_from_pdf(str(pdf_path))
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(fund_data.model_dump_json(indent=2, ensure_ascii=False))
         print(f"✅ Zapisano podsumowanie do: {output_path}")
