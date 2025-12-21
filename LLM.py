@@ -23,20 +23,26 @@ class FundcardFlat(BaseModel):
 # =========================================================
 
     nazwa_funduszu: str = Field(
-        description="Pełna nazwa subfunduszu z nagłówka karty funduszu."
+        description="Pełna, dokładna nazwa subfunduszu przepisana z nagłówka karty funduszu. "
+        "Nie skracaj, nie parafrazuj, nie dodawaj nazwy TFI. "
+        "Musi odpowiadać 1:1 nazwie podanej w karcie."
     )
 
-    towarzystwo: str = Field(
-        description="Podmiot zarządzający (PKO TFI / Santander TFI / Pekao TFI)."
+    towarzystwo: Literal[
+    "PKO TFI",
+    "Santander TFI",
+    "Pekao TFI"] = Field(
+        description="Podmiot zarządzający (TFI), np. 'PKO TFI', 'Santander TFI', 'Pekao TFI'. "
+        "Ustalany na podstawie logotypu, stopki lub strony tytułowej karty funduszu."
     )
 
     kategoria_funduszu: Optional[str] = Field(
         description=(
-            "Deklaratywna kategoria funduszu nadana przez TFI, np. "
-            "'akcyjny rynków zagranicznych', "
-            "'obligacji wysokodochodowych', "
-            "'fundusz cyklu życia', "
-            "'PPK'."
+            "Deklaratywna kategoria funduszu podana przez TFI, opisująca charakter strategii "
+        "lub grupę docelową produktu. Może zawierać tematy i etykiety takie jak: "
+        "akcyjny rynków zagranicznych, obligacji wysokodochodowych, fundusz cyklu życia, "
+        "zdefiniowanej daty, PPK, absolutnej stopy zwrotu. "
+        "Pole to NIE określa struktury aktywów i NIE zastępuje typu funduszu."
         )
     )
 
@@ -61,12 +67,15 @@ class FundcardFlat(BaseModel):
 
     czy_PPK: Literal["tak", "nie"] = Field(
         description=(
-            "Czy fundusz jest częścią programu Pracowniczych Planów Kapitałowych (PPK)."
+            "Czy fundusz jest częścią programu PPK. "
+        "Ustaw 'tak' WYŁĄCZNIE jeśli karta funduszu wprost zawiera frazę 'PPK'. "
+        "Fundusze cyklu życia lub zdefiniowanej daty NIE są automatycznie funduszami PPK."
         )
     )
 
     data_publikacji: Optional[str] = Field(
-        description="Data publikacji karty funduszu (YYYY-MM-DD)."
+        description="Data publikacji karty funduszu w formacie YYYY-MM-DD. "
+        "Jeżeli występuje w formacie dziennym (np. 31.10.2025), należy ją przekonwertować."
     )
 
     # =========================================================
@@ -77,9 +86,11 @@ class FundcardFlat(BaseModel):
         Literal[1, 2, 3, 4, 5, 6, 7]
     ] = Field(
         description=(
-            "Ogólny wskaźnik ryzyka w skali 1–7, "
-            "przepisany bezpośrednio z karty funduszu. "
-            "Jeżeli brak – null."
+            "Ogólny wskaźnik ryzyka SRI (1–7) prezentowany w karcie funduszu, zwykle "
+        "w formie graficznej skali lub w opisie. Należy wybrać wyłącznie liczbę, "
+        "która jest oznaczona jako ryzyko funduszu. "
+        "1 oznacza najniższe ryzyko, 7 najwyższe. "
+        "Jeżeli karta funduszu nie podaje wskaźnika → null."
         )
     )
 
@@ -88,15 +99,16 @@ class FundcardFlat(BaseModel):
     # =========================================================
 
     aktywa_netto_mln: Optional[float] = Field(
-        description="Aktywa netto funduszu w mln zł."
+        description="Aktywa netto funduszu w mln zł. "
+        "Należy zamienić zapis '773,98 mln PLN' na wartość float 773.98."
     )
 
     cena_jednostki: Optional[float] = Field(
-        description="Cena jednostki uczestnictwa."
+        description="Aktualna cena jednostki uczestnictwa, wyrażona jako liczba zmiennoprzecinkowa."
     )
 
     minimalna_wplata_pierwsza: Optional[float] = Field(
-        description="Minimalna pierwsza wpłata."
+        description="Minimalna pierwsza wpłata do funduszu, zgodnie z kartą funduszu."
     )
 
     data_pierwszej_wyceny: Optional[str] = Field(
@@ -104,7 +116,8 @@ class FundcardFlat(BaseModel):
     )
 
     sugerowany_czas_inwestycji_lata: Optional[int] = Field(
-        description="Sugerowany minimalny czas inwestycji w latach."
+        description="Minimalny sugerowany czas inwestycji wyrażony w latach. "
+        "LLM powinien wyciągnąć liczbę z fraz typu: 'co najmniej 5 lat', 'min. 3 lata'."
     )
 
     # =========================================================
@@ -112,15 +125,37 @@ class FundcardFlat(BaseModel):
     # =========================================================
 
     oplata_za_zarzadzanie: Optional[float] = Field(
-        description="Roczna opłata za zarządzanie w %, jako float np. 3% zapisz jako 0.03."
+        description="Roczna opłata za zarządzanie wyrażona w procentach, którą należy "
+        "zawsze konwertować na format dziesiętny typu float: np. 3% zapisz jako 0.03, 2.5% zapisz jako 0.025. "
+        "Jeżeli w karcie funduszu podano zakres lub wartość maksymalną "
+        "(np. 'maksymalnie 4%'), należy użyć liczby podanej w karcie i przeliczyć ją "
+        "na format dziesiętny. "
+        "Jeżeli informacja nie występuje w karcie funduszu → null. "
+        "LLM nie może zgadywać opłaty ani stosować wartości domyślnych."
     )
 
     oplata_za_wynik: Optional[str] = Field(
-        description="Opisowa informacja o opłacie za wynik."
+        description="Opisowa informacja o opłacie za wynik (performance fee) dokładnie tak, "
+        "jak podano w karcie funduszu. "
+        "Może przyjmować formę: 'brak', 'nie dotyczy', 'tak – model Alfa', "
+        "'tak – high-water mark', 'tak – X% od nadwyżki ponad benchmark'. "
+        "Jeżeli w karcie funduszu występuje liczba procentowa (np. 20%), "
+        "należy przepisać ją w formacie tekstowym '20%'. "
+        "Jeżeli karta funduszu nie podaje żadnej informacji o opłacie za wynik, "
+        "należy zwrócić null. "
+        "LLM nie może zakładać istnienia opłaty za wynik na podstawie typu funduszu "
+        "ani wnioskować jej procentowej wysokości."
     )
 
     oplata_manipulacyjna: Optional[float] = Field(
-        description="Opłata manipulacyjna (wejściowa) w %, jako float np. 3% zapisz jako 0.03."
+        description="Opłata manipulacyjna (wejściowa) wyrażona w procentach, konwertowana na float "
+        "w formacie dziesiętnym: np. 3% zapisz jako 0.03, 5% zapisz jako 0.05, 1,5% zapisz jako 0.015. "
+        "Wartość ZAWSZE musi być floatem, nigdy tekstem ani liczbą z procentem. "
+        "Jeżeli karta funduszu zawiera sformułowania 'do X%', 'maksymalnie X%' lub "
+        "'zgodnie z tabelą opłat – X%', należy użyć liczby X i przeliczyć ją na float. "
+        "Jeżeli w karcie widnieje '0%' lub 'brak opłaty', należy wpisać 0.0. "
+        "Jeśli karta nie podaje żadnej informacji → null. "
+        "LLM nie może zgadywać wartości."
     )
 
     # =========================================================
@@ -128,16 +163,29 @@ class FundcardFlat(BaseModel):
     # =========================================================
 
     benchmark_nazwa: Optional[str] = Field(
-        description="Nazwa benchmarku funduszu, jeśli występuje."
+        description="Pełna nazwa benchmarku lub wskaźnika referencyjnego dokładnie tak, jak podano "
+        "w karcie funduszu. Jeśli benchmark ma jedną nazwę (np. '100% Euro Stoxx 50 INDEX EUR'), "
+        "należy przepisać ją w całości. "
+        "Jeśli benchmark składa się z wielu komponentów procentowych, benchmark_nazwa może "
+        "pozostać null. "
+        "Jeżeli benchmark jest tabelaryczny, benchmark_nazwa może pozostać pusta."
     )
 
     benchmark_sklad: List[str] = Field(
         default_factory=list,
-        description="Skład benchmarku, np. ['WIG: 90%', 'POLONIA: 10%']."
+        description="Lista składników benchmarku w formacie 'nazwa indeksu: procent'. "
+        "Przykłady: 'mWIG40TR: 60%', 'sWIG80TR: 30%', 'WIBOR O/N: 10%'. "
+        "Jeżeli karta podaje benchmark jako jedno zdanie bez listy, np. "
+        "'100% Euro Stoxx 50 INDEX EUR', wtedy benchmark_sklad powinno zawierać jedną pozycję: "
+        "'Euro Stoxx 50 INDEX EUR: 100%'. "
+        "Jeżeli benchmark nie występuje → lista pusta. "
+        "W przypadku tabeli (np. Pekao) należy dokładnie przepisać każdy składnik."
     )
 
     benchmark_waluta: Optional[str] = Field(
-        description="Waluta benchmarku (PLN, EUR, USD)."
+        description="Waluta benchmarku, jeśli jest wyraźnie wskazana (np. PLN, EUR, USD). "
+        "Jeżeli komponenty benchmarku mają różne waluty, wybierz dominującą "
+        "lub pozostaw null."
     )
 
     # =========================================================
@@ -146,8 +194,12 @@ class FundcardFlat(BaseModel):
 
     polityka_inwestycyjna_streszczenie: Optional[str] = Field(
         description=(
-            "Krótki (2–3 zdania) opis polityki inwestycyjnej, "
-            "stworzony jako streszczenie treści karty funduszu."
+            "Krótkie streszczenie (2–3 zdania) polityki inwestycyjnej funduszu "
+        "stworzone przez LLM własnymi słowami. "
+        "Streszczenie musi zawierać trzy elementy: "
+        "1) dominująca klasa aktywów, 2) zakres geograficzny, "
+        "3) charakter strategii (np. aktywna selekcja, inwestowanie pasywne, wysoka zmienność). "
+        "Nie wolno cytować karty funduszu – opis musi być parafrazą."
         )
     )
 
@@ -158,10 +210,15 @@ class FundcardFlat(BaseModel):
     rodzaje_instrumentow: List[str] = Field(
         default_factory=list,
         description=(
-            "Rodzaje instrumentów finansowych występujących w portfelu, "
-            "np. akcje notowane, obligacje skarbowe, obligacje korporacyjne, "
-            "obligacje wysokodochodowe, ETF, fundusze, "
-            "depozyty bankowe, instrumenty rynku pieniężnego."
+            "Lista rodzajów instrumentów występujących w portfelu funduszu. "
+        "Do przykładowych kategorii należą: akcje notowane, akcje nienotowane, "
+        "obligacje skarbowe, obligacje korporacyjne, obligacje wysokodochodowe (HY), "
+        "obligacje komunalne, listy zastawne, ETF, fundusze (tytuły uczestnictwa), "
+        "instrumenty pochodne, depozyty bankowe, instrumenty rynku pieniężnego. "
+        "Jeżeli rodzaj instrumentu NIE jest podany wprost, LLM powinien wnioskować "
+        "kategorię na podstawie nazwy instrumentu (np. ETF po nazwie), "
+        "lub kontekstu tabeli (np. fundusze HY → obligacje HY). "
+        "Jeżeli kategoria nie może być ustalona jednoznacznie – pominąć instrument."
         )
     )
 
@@ -171,27 +228,39 @@ class FundcardFlat(BaseModel):
 
     alokacja_geograficzna: List[str] = Field(
         default_factory=list,
-        description="Struktura geograficzna portfela."
+        description="Struktura geograficzna portfela w formacie 'kraj/region: procent'. "
+        "Należy przepisywać wartości dokładnie z kart funduszy. "
+        "np. Polska, Strefa Euro, Europa Zachodnia, USA."
     )
 
     alokacja_walutowa: List[str] = Field(
         default_factory=list,
-        description="Struktura walutowa portfela."
+        description="Struktura walutowa w formacie 'waluta: procent'. "
+        "Jeżeli karta funduszu nie podaje danych → lista pusta."
     )
 
     alokacja_sektorowa: List[str] = Field(
         default_factory=list,
-        description="Struktura sektorowa portfela."
+        description="Struktura sektorowa portfela w formacie 'sektor: procent'. "
+        "Jeśli karta funduszu nie podaje sektorów (np. PKO), należy wnioskować "
+        "sektor na podstawie nazw spółek, używając ogólnych kategorii: "
+        "Technologie, Finanse, Przemysł, Surowce, Zdrowie, Energetyka, Konsumpcyjne, Usługi. "
+        "Jeśli sektor nie jest możliwy do określenia jednoznacznie → pominąć."
     )
 
     top10: List[str] = Field(
         default_factory=list,
-        description="Lista 10 największych pozycji w portfelu."
+        description="Lista 10 największych pozycji w portfelu. "
+        "Format: 'nazwa: procent', np. 'ASML: 6.5%'. "
+        "LLM powinien przepisać pozycje w kolejności od największej. "
+        "Jeżeli procent jest podany bez znaku %, należy go dodać."
     )
 
     klasy_instrumentow: List[str] = Field(
         default_factory=list,
-        description="Struktura klas instrumentów."
+        description="Struktura klas instrumentów w formacie 'klasa: procent', np. "
+        "'akcje: 90%', 'obligacje: 10%'. "
+        "Jeśli karta funduszu nie podaje takich danych → lista pusta."
     )
 
     # =========================================================
@@ -199,12 +268,14 @@ class FundcardFlat(BaseModel):
     # =========================================================
 
     kategoria_A: Literal["tak", "nie"] = Field(
-        description="Czy fundusz posiada kategorię jednostek A."
+        description="Czy fundusz posiada jednostki kategorii A. "
+        "Należy ustalić na podstawie tabeli opłat lub sekcji 'Klasy jednostek'."
     )
 
     inne_kategorie: List[str] = Field(
         default_factory=list,
-        description="Pozostałe kategorie jednostek (np. S, T, B, D)."
+        description="Pozostałe klasy jednostek (np. S, T, B, D). "
+        "LLM ma wypisać tylko te, które są faktycznie podane w karcie funduszu."
     )
 
 

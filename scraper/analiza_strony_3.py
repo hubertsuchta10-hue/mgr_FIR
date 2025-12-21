@@ -306,4 +306,4 @@ if __name__ == "__main__":
 
  
 
-#python analiza_strony_3.py --url "https://www.pkobp.pl/klient-indywidualny/oszczedzanie-inwestycje/fundusze-inwestycyjne?srsltid=AfmBOoolc1pXCLSJSdUX5TMojFuCmK8qOi6OFb7Cz7KhSyXG80RpVIAn%22%29&filter=1"
+#python analiza_strony_3.py --url "https://www.pkotfi.pl/wycena-jednostek/"
